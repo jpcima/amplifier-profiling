@@ -93,8 +93,12 @@ void Application::setSweepActive(bool active)
         return;
 
     P->sweep_active_ = active;
-    if (!active)
+    if (!active) {
         P->tm_nextsweep_->stop();
+
+        Messages::RequestStop msg;
+        P->proc_->send_message(msg);
+    }
     else {
         P->sweep_progress_ = 0;
         P->mainwindow_->showProgress(0);
@@ -201,7 +205,6 @@ void Application::nextSweepTick()
     Messages::RequestAnalyzeFrequency msg;
     msg.frequency = P->an_freqs_[index];
     msg.spl = P->sweep_spl_;
-
     proc.send_message(msg);
 
     P->mainwindow_->showCurrentFrequency(msg.frequency);

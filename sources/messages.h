@@ -10,6 +10,7 @@
 
 #define EACH_MESSAGE_TYPE(F)                    \
     F(RequestAnalyzeFrequency)                  \
+    F(RequestStop)                              \
     F(NotifyFrequencyAnalysis)
 
 enum class Message_Tag {
@@ -39,6 +40,9 @@ namespace Messages {
     DEFMESSAGE(RequestAnalyzeFrequency) {
         float frequency;
         int spl;
+    };
+
+    DEFMESSAGE(RequestStop) {
     };
 
     DEFMESSAGE(NotifyFrequencyAnalysis) {

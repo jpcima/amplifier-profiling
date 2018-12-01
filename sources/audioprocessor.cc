@@ -152,31 +152,30 @@ void Audio_Processor::Impl::process(const float *in, float *out, unsigned n, voi
 
     P->handle_messages();
 
-    if (!P->active_)
-        return;
-
-    if (P->gen_can_start_) {
-        P->collect(in, n);
-        if (!P->gen_has_finished_ && P->out_buf_fill_ == P->out_buf_len_) {
-            Ring_Buffer &rb_out = *P->rb_out_;
-            Messages::NotifyFrequencyAnalysis msg;
-            if (sizeof(msg) < rb_out.size_free()) {
-                msg.frequency = P->gen_freq_ * Analysis::sample_rate;
-                msg.spl = P->gen_spl_;
-                msg.response = P->compute_response();
-                rb_out.put(msg);
-                P->gen_has_finished_ = true;
+    if (P->active_) {
+        if (P->gen_can_start_) {
+            P->collect(in, n);
+            if (!P->gen_has_finished_ && P->out_buf_fill_ == P->out_buf_len_) {
+                Ring_Buffer &rb_out = *P->rb_out_;
+                Messages::NotifyFrequencyAnalysis msg;
+                if (sizeof(msg) < rb_out.size_free()) {
+                    msg.frequency = P->gen_freq_ * Analysis::sample_rate;
+                    msg.spl = P->gen_spl_;
+                    msg.response = P->compute_response();
+                    rb_out.put(msg);
+                    P->gen_has_finished_ = true;
+                }
             }
         }
-    }
 
-    if (!P->gen_can_start_ && P->out_amp_ < Analysis::silence_threshold) {
-        P->gen_can_start_ = true;
-        P->gen_starting_phase_ = P->gen_phase_;
-    }
+        if (!P->gen_can_start_ && P->out_amp_ < Analysis::silence_threshold) {
+            P->gen_can_start_ = true;
+            P->gen_starting_phase_ = P->gen_phase_;
+        }
 
-    if (P->gen_can_start_)
-        P->generate(out, n);
+        if (P->gen_can_start_)
+            P->generate(out, n);
+    }
 
     P->update_levels(in, out, n);
 }
@@ -214,6 +213,9 @@ void Audio_Processor::Impl::process_message(const Basic_Message &hmsg)
         out_buf_fill_ = 0;
         break;
     }
+    case Message_Tag::RequestStop:
+        active_ = false;
+        break;
     default:
         assert(false);
         break;
