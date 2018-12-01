@@ -16,7 +16,10 @@ public:
     void showCurrentFrequency(float f);
     void showLevels(float in, float out);
     void showProgress(float progress);
-    void showPlotData(const double *freqs, double freqmark, const double *mags, const double *phases, unsigned n);
+    void showPlotData(
+        const double *freqs, double freqmark,
+        const double *lo_mags, const double *lo_phases,
+        const double *hi_mags, const double *hi_phases, unsigned n);
 
 private:
     struct Impl;

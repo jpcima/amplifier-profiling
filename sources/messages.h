@@ -38,10 +38,12 @@ namespace Messages {
 
     DEFMESSAGE(RequestAnalyzeFrequency) {
         float frequency;
+        int spl;
     };
 
     DEFMESSAGE(NotifyFrequencyAnalysis) {
         float frequency;
+        int spl;
         std::complex<float> response;
     };
 

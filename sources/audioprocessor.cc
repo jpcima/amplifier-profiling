@@ -46,6 +46,7 @@ struct Audio_Processor::Impl {
 
     bool gen_can_start_ = false;
     bool gen_has_finished_ = false;
+    int gen_spl_ = Analysis::Signal_Lo;
     float gen_freq_ = 0;
     float gen_phase_ = 0;
     float gen_starting_phase_ = 0;
@@ -161,6 +162,7 @@ void Audio_Processor::Impl::process(const float *in, float *out, unsigned n, voi
             Messages::NotifyFrequencyAnalysis msg;
             if (sizeof(msg) < rb_out.size_free()) {
                 msg.frequency = P->gen_freq_ * Analysis::sample_rate;
+                msg.spl = P->gen_spl_;
                 msg.response = P->compute_response();
                 rb_out.put(msg);
                 P->gen_has_finished_ = true;
@@ -203,6 +205,7 @@ void Audio_Processor::Impl::process_message(const Basic_Message &hmsg)
         active_ = true;
         gen_can_start_ = false;
         gen_has_finished_ = false;
+        gen_spl_ = msg->spl;
         unsigned bin = std::lround(fft_size * msg->frequency / sr);
         bin = std::min(bin, fft_size / 2);
         gen_freq_ = (float)bin / fft_size;
@@ -220,9 +223,10 @@ void Audio_Processor::Impl::process_message(const Basic_Message &hmsg)
 void Audio_Processor::Impl::generate(float *out, unsigned n)
 {
     const float f = gen_freq_;
+    const float a = Analysis::signal_amplitude(gen_spl_);
     float p = gen_phase_;
     for (unsigned i = 0; i < n; ++i) {
-        out[i] = Analysis::amp_generator * std::cos(2 * (float)M_PI * p);
+        out[i] = a * std::cos(2 * (float)M_PI * p);
         p += f;
         p -= (int)p;
     }
@@ -260,7 +264,9 @@ cfloat Audio_Processor::Impl::compute_response()
 
     unsigned bin = std::lround(n * f);
     cfloat h_out = cplx[bin] * 4.0f / (float)n;
-    cfloat h_in = std::polar(Analysis::amp_generator, 2 * (float)M_PI * gen_starting_phase_);
+    cfloat h_in = std::polar(
+        (float)Analysis::signal_amplitude(gen_spl_),
+        2 * (float)M_PI * gen_starting_phase_);
     cfloat response = h_out / h_in;
     return response;
 }
