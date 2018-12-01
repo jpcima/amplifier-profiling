@@ -88,8 +88,14 @@ MainWindow::MainWindow(QWidget *parent)
     P->ui.pltAmplitude->setAxisScale(QwtPlot::yLeft, Analysis::db_range_min, Analysis::db_range_max);
     P->ui.pltPhase->setAxisScale(QwtPlot::yLeft, -M_PI, +M_PI);
 
+    P->ui.sl_gain->setValue(20 * std::log10(Analysis::global_gain));
+
     connect(P->ui.btn_startSweep, &QAbstractButton::clicked, theApplication, &Application::setSweepActive);
     connect(P->ui.btn_save, &QAbstractButton::clicked, theApplication, &Application::saveProfile);
+
+    connect(
+        P->ui.sl_gain, &QwtSlider::valueChanged,
+        this, [](double v) { Analysis::global_gain = std::pow(10.0, v * 0.05); });
 }
 
 MainWindow::~MainWindow()

@@ -9,5 +9,6 @@
 namespace Analysis {
 
 float sample_rate;
+float global_gain = 0.5f;
 
 }  // namespace Analysis

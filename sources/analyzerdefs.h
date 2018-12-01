@@ -26,13 +26,19 @@ enum Signal_Pseudo_Level {
     Signal_Hi,
 };
 
-inline constexpr double signal_amplitude(int spl)
+extern float sample_rate;
+extern float global_gain;
+
+[[gnu::unused]] static constexpr float silence_threshold = 1e-4f;
+
+inline constexpr double spl_amplitude(int spl)
 {
     return (spl == Signal_Hi) ? 1.0 : 0.1;
 }
 
-extern float sample_rate;
-
-[[gnu::unused]] static constexpr float silence_threshold = 1e-4f;
+inline double global_amplitude(int spl)
+{
+    return spl_amplitude(spl) * global_gain;
+}
 
 }  // namespace Analysis

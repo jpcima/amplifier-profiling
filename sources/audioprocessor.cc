@@ -223,7 +223,7 @@ void Audio_Processor::Impl::process_message(const Basic_Message &hmsg)
 void Audio_Processor::Impl::generate(float *out, unsigned n)
 {
     const float f = gen_freq_;
-    const float a = Analysis::signal_amplitude(gen_spl_);
+    const float a = Analysis::global_amplitude(gen_spl_);
     float p = gen_phase_;
     for (unsigned i = 0; i < n; ++i) {
         out[i] = a * std::cos(2 * (float)M_PI * p);
@@ -265,7 +265,7 @@ cfloat Audio_Processor::Impl::compute_response()
     unsigned bin = std::lround(n * f);
     cfloat h_out = cplx[bin] * 4.0f / (float)n;
     cfloat h_in = std::polar(
-        (float)Analysis::signal_amplitude(gen_spl_),
+        (float)Analysis::global_amplitude(gen_spl_),
         2 * (float)M_PI * gen_starting_phase_);
     cfloat response = h_out / h_in;
     return response;
