@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <complex>
 #include <cmath>
+#include <cassert>
 typedef std::complex<float> cfloat;
 
 struct Application::Impl {
