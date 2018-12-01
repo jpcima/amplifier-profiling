@@ -96,6 +96,24 @@ MainWindow::MainWindow(QWidget *parent)
     connect(
         P->ui.sl_gain, &QwtSlider::valueChanged,
         this, [](double v) { Analysis::global_gain = std::pow(10.0, v * 0.05); });
+
+    P->ui.btn_lo->setChecked(true);
+    P->ui.btn_hi->setChecked(true);
+
+    connect(
+        P->ui.btn_lo, &QCheckBox::clicked,
+        this, [this](bool checked) {
+            theApplication->setSweepEnabled(checked, P->ui.btn_hi->isChecked());
+            P->curve_lo_mag_->setVisible(checked);
+            P->curve_lo_phase_->setVisible(checked);
+        });
+    connect(
+        P->ui.btn_hi, &QCheckBox::clicked,
+        this, [this](bool checked) {
+            theApplication->setSweepEnabled(P->ui.btn_lo->isChecked(), checked);
+            P->curve_hi_mag_->setVisible(checked);
+            P->curve_hi_phase_->setVisible(checked);
+        });
 }
 
 MainWindow::~MainWindow()

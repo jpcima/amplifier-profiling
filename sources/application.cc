@@ -38,6 +38,11 @@ struct Application::Impl {
     unsigned sweep_index_ = 0;
     int sweep_spl_ = Analysis::Signal_Lo;
     unsigned sweep_progress_ = 0;
+
+    bool lo_enable_ = true;
+    bool hi_enable_ = true;
+    int next_spl_phase(int spl) const;
+    bool enabled_spl(int spl) const;
 };
 
 Application::Application(int &argc, char *argv[])
@@ -87,6 +92,27 @@ void Application::setMainWindow(MainWindow &win)
     P->mainwindow_ = &win;
 }
 
+void Application::setSweepEnabled(bool lo, bool hi)
+{
+    if (lo == P->lo_enable_ && hi == P->hi_enable_)
+        return;
+
+    bool disabled = !P->lo_enable_ && !P->hi_enable_;
+    P->lo_enable_ = lo;
+    P->hi_enable_ = hi;
+
+    P->sweep_progress_ = 0;
+    P->mainwindow_->showProgress(0);
+
+    if (disabled) {
+        int next = P->next_spl_phase(P->sweep_spl_);
+        if (next != -1) {
+            P->sweep_spl_ = next;
+            P->tm_nextsweep_->start(0);
+        }
+    }
+}
+
 void Application::setSweepActive(bool active)
 {
     if (P->sweep_active_ == active)
@@ -122,12 +148,18 @@ void Application::saveProfile()
         P->an_lo_response_.get(),
         P->an_hi_response_.get(),
     };
+    bool response_enabled[] = {
+        P->lo_enable_,
+        P->hi_enable_,
+    };
     const char *response_names[] = {
         "lo",
         "hi",
     };
 
     for (unsigned r = 0; r < 2; ++r) {
+        if (!response_enabled[r])
+            continue;
         std::ofstream file((filename + "/" + response_names[r] + ".dat").toLocal8Bit().data());
         file << std::scientific << std::setprecision(10);
         for (unsigned i = 0; i < Analysis::sweep_length; ++i) {
@@ -151,8 +183,11 @@ void Application::realtimeUpdateTick()
         case Message_Tag::NotifyFrequencyAnalysis: {
             auto *msg = (Messages::NotifyFrequencyAnalysis *)hmsg;
 
-            unsigned index = P->sweep_index_;
             int spl = msg->spl;
+            if (spl == -1)
+                return;
+
+            unsigned index = P->sweep_index_;
             P->an_freqs_[index] = msg->frequency;
 
             cfloat *response = ((spl == Analysis::Signal_Hi) ?
@@ -169,9 +204,9 @@ void Application::realtimeUpdateTick()
             plot_phases[index] = std::arg(msg->response);
 
             ++index;
-            if (index == Analysis::sweep_length) {
+            if (index == Analysis::sweep_length || !P->enabled_spl(spl)) {
                 index = 0;
-                spl = !spl;
+                spl = P->next_spl_phase(P->sweep_spl_);
             }
             P->sweep_index_ = index;
             P->sweep_spl_ = spl;
@@ -218,4 +253,28 @@ void Application::replotResponses()
          P->an_lo_plot_mags_.get(), P->an_lo_plot_phases_.get(),
          P->an_hi_plot_mags_.get(), P->an_hi_plot_phases_.get(),
          ns);
+}
+
+int Application::Impl::next_spl_phase(int spl) const
+{
+    if (!lo_enable_ && !hi_enable_)
+        return -1;
+    else if ((spl == -1 || spl == Analysis::Signal_Hi) && lo_enable_)
+        return Analysis::Signal_Lo;
+    else if ((spl == -1 || spl == Analysis::Signal_Lo) && hi_enable_)
+        return Analysis::Signal_Hi;
+    else
+        return spl;
+}
+
+bool Application::Impl::enabled_spl(int spl) const
+{
+    switch (spl) {
+    default:
+        return false;
+    case Analysis::Signal_Lo:
+        return lo_enable_;
+    case Analysis::Signal_Hi:
+        return hi_enable_;
+    }
 }

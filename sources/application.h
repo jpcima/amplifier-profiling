@@ -19,6 +19,8 @@ public:
     void setAudioProcessor(Audio_Processor &proc);
     void setMainWindow(MainWindow &win);
 
+    void setSweepEnabled(bool lo, bool hi);
+
 public slots:
     void setSweepActive(bool active);
     void saveProfile();

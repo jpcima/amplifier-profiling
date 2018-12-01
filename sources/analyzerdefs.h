@@ -33,7 +33,7 @@ extern float global_gain;
 
 inline constexpr double spl_amplitude(int spl)
 {
-    return (spl == Signal_Hi) ? 1.0 : 0.1;
+    return (spl == Signal_Hi) ? 1.0 : 0.01;
 }
 
 inline double global_amplitude(int spl)
