@@ -72,7 +72,7 @@ Smpp = Smp(1:Ns);
 fk = [0 FreqQ];
 wt = 1 ./ (fk+1);
 wk = 2*pi*fk/Fs;
-[B,A] = invfreqz(Smpp,wk,NZ,NP,wt);
+[B, A] = invfreqz(Smpp, wk, NZ, NP, wt);
 ```
 
 On affiche un comparatif de la réponse des 2 filtres :
