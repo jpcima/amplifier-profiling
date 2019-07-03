@@ -52,6 +52,7 @@ struct Audio_Processor::Impl {
     float gen_freq_[Analysis::max_bins_at_once] = {};
     float gen_phase_[Analysis::max_bins_at_once] = {};
     float gen_starting_phase_[Analysis::max_bins_at_once] = {};
+    float gen_gain_compensate_ = 0;
 
     std::unique_ptr<float[]> out_buf_;
     unsigned out_buf_len_ = 0;
@@ -219,6 +220,12 @@ void Audio_Processor::Impl::process_message(const Basic_Message &hmsg)
             gen_starting_phase_[a] = 0;
         }
         out_buf_fill_ = 0;
+
+        // compensate for level increase caused by sum of sines
+        float rms_single = M_SQRT1_2;
+        float rms_sum = sqrt((M_SQRT1_2 * M_SQRT1_2) * num_bins);
+        gen_gain_compensate_ = rms_single / rms_sum;
+
         break;
     }
     case Message_Tag::RequestStop:
@@ -248,6 +255,11 @@ void Audio_Processor::Impl::generate(float *out, unsigned n)
         }
         gen_phase_[a] = p;
     }
+
+    //
+    const float comp = gen_gain_compensate_;
+    for (unsigned i = 0; i < n; ++i)
+        out[i] *= comp;
 }
 
 void Audio_Processor::Impl::collect(const float *in, unsigned n)
