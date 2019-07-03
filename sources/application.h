@@ -22,6 +22,9 @@ public:
     void setSweepEnabled(bool lo, bool hi);
     void setFreqsAtOnce(unsigned count);
 
+signals:
+    void sweepPhaseChanged(int spl);
+
 public slots:
     void setSweepActive(bool active);
     void saveProfile();

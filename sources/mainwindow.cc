@@ -119,6 +119,18 @@ MainWindow::MainWindow(QWidget *parent)
     connect(
         P->ui.sp_parallel, QOverload<int>::of(&QSpinBox::valueChanged),
         this, [](int num) { theApplication->setFreqsAtOnce(num); });
+
+    connect(
+        theApplication, &Application::sweepPhaseChanged,
+        this, [this](int spl) {
+                  const char *text;
+                  switch (spl) {
+                  case Analysis::Signal_Lo: text = "Lo"; break;
+                  case Analysis::Signal_Hi: text = "Hi"; break;
+                  default: text = "None"; break;
+                  }
+                  P->ui.lbl_sweep->setText(text);
+              });
 }
 
 MainWindow::~MainWindow()

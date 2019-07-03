@@ -44,6 +44,7 @@ struct Application::Impl {
     bool hi_enable_ = true;
     int next_spl_phase(int spl) const;
     bool enabled_spl(int spl) const;
+    void set_sweep_phase(int spl);
 };
 
 Application::Application(int &argc, char *argv[])
@@ -108,7 +109,7 @@ void Application::setSweepEnabled(bool lo, bool hi)
     if (disabled) {
         int next = P->next_spl_phase(P->sweep_spl_);
         if (next != -1) {
-            P->sweep_spl_ = next;
+            P->set_sweep_phase(next);
             P->tm_nextsweep_->start(0);
         }
     }
@@ -222,7 +223,7 @@ void Application::realtimeUpdateTick()
                 spl = P->next_spl_phase(P->sweep_spl_);
             }
             P->sweep_index_ = index;
-            P->sweep_spl_ = spl;
+            P->set_sweep_phase(spl);
 
             unsigned progress = P->sweep_progress_;
             progress += done_bins;
@@ -294,4 +295,12 @@ bool Application::Impl::enabled_spl(int spl) const
     case Analysis::Signal_Hi:
         return hi_enable_;
     }
+}
+
+void Application::Impl::set_sweep_phase(int spl)
+{
+    if (sweep_spl_ == spl)
+        return;
+    sweep_spl_ = spl;
+    emit theApplication->sweepPhaseChanged(spl);
 }
