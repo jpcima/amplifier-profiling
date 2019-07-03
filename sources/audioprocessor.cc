@@ -296,7 +296,7 @@ void Audio_Processor::Impl::compute_response(cfloat *response)
         unsigned bin = std::lround(n * f);
         cfloat h_out = cplx[bin] * 4.0f / (float)n;
         cfloat h_in = std::polar(
-            (float)Analysis::global_amplitude(gen_spl_),
+            (float)Analysis::global_amplitude(gen_spl_) * gen_gain_compensate_,
             2 * (float)M_PI * gen_starting_phase_[a]);
         response[a] = h_out / h_in;
     }
