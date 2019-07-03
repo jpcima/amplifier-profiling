@@ -19,7 +19,9 @@ HEADERS = \
     sources/analyzerdefs.h \
     sources/messages.h \
     sources/utility/nextpow2.h \
-    sources/utility/ring_buffer.h
+    sources/utility/ring_buffer.h \
+    sources/utility/counting_bitset.h \
+    sources/utility/counting_bitset.tcc
 
 FORMS = \
     forms/mainwindow.ui
