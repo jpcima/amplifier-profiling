@@ -20,6 +20,7 @@ public:
     void setMainWindow(MainWindow &win);
 
     void setSweepEnabled(bool lo, bool hi);
+    void setFreqsAtOnce(unsigned count);
 
 public slots:
     void setSweepActive(bool active);

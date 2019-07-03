@@ -37,6 +37,7 @@ struct Application::Impl {
     bool sweep_active_ = false;
     unsigned sweep_index_ = 0;
     int sweep_spl_ = Analysis::Signal_Lo;
+    unsigned freqs_at_once_ = 1;
     unsigned sweep_progress_ = 0;
 
     bool lo_enable_ = true;
@@ -111,6 +112,11 @@ void Application::setSweepEnabled(bool lo, bool hi)
             P->tm_nextsweep_->start(0);
         }
     }
+}
+
+void Application::setFreqsAtOnce(unsigned count)
+{
+    P->freqs_at_once_ = count;
 }
 
 void Application::setSweepActive(bool active)
@@ -188,20 +194,27 @@ void Application::realtimeUpdateTick()
                 return;
 
             unsigned index = P->sweep_index_;
-            P->an_freqs_[index] = msg->frequency;
 
+            double *an_freqs = P->an_freqs_.get();
             cfloat *response = ((spl == Analysis::Signal_Hi) ?
                                 P->an_hi_response_ : P->an_lo_response_).get();
 
-            response[index] = msg->response;
+            unsigned done_bins = msg->num_bins;
+            for (unsigned a = 0; a < done_bins; ++a)  {
+                unsigned dst_index = Analysis::nth_bin_position(index, a, done_bins);
 
-            double *plot_mags = ((spl == Analysis::Signal_Hi) ?
-                                P->an_hi_plot_mags_ : P->an_lo_plot_mags_).get();
-            double *plot_phases = ((spl == Analysis::Signal_Hi) ?
-                                   P->an_hi_plot_phases_ : P->an_lo_plot_phases_).get();
+                an_freqs[dst_index] = msg->frequency[a];
+                response[dst_index] = msg->response[a];
 
-            plot_mags[index] = 20 * std::log10(std::abs(msg->response));
-            plot_phases[index] = std::arg(msg->response);
+                double *plot_mags = ((spl == Analysis::Signal_Hi) ?
+                                     P->an_hi_plot_mags_ : P->an_lo_plot_mags_).get();
+                double *plot_phases = ((spl == Analysis::Signal_Hi) ?
+                                       P->an_hi_plot_phases_ : P->an_lo_plot_phases_).get();
+
+                plot_mags[dst_index] = 20 * std::log10(std::abs(msg->response[a]));
+                plot_phases[dst_index] = std::arg(msg->response[a]);
+
+            }
 
             ++index;
             if (index == Analysis::sweep_length || !P->enabled_spl(spl)) {
@@ -212,7 +225,7 @@ void Application::realtimeUpdateTick()
             P->sweep_spl_ = spl;
 
             unsigned progress = P->sweep_progress_;
-            ++progress;
+            progress += done_bins;
             P->sweep_progress_ = std::min(progress, 2u * Analysis::sweep_length);
             P->mainwindow_->showProgress(progress * (0.5f / Analysis::sweep_length));
 
@@ -238,11 +251,15 @@ void Application::nextSweepTick()
     unsigned index = P->sweep_index_;
 
     Messages::RequestAnalyzeFrequency msg;
-    msg.frequency = P->an_freqs_[index];
     msg.spl = P->sweep_spl_;
+    msg.num_bins = P->freqs_at_once_;
+    for (unsigned a = 0; a < msg.num_bins; ++a) {
+        unsigned src_index = Analysis::nth_bin_position(index, a, msg.num_bins);
+        msg.frequency[a] = P->an_freqs_[src_index];
+    }
     proc.send_message(msg);
 
-    P->mainwindow_->showCurrentFrequency(msg.frequency);
+    P->mainwindow_->showCurrentFrequency(msg.frequency[0]);
 }
 
 void Application::replotResponses()

@@ -114,6 +114,11 @@ MainWindow::MainWindow(QWidget *parent)
             P->curve_hi_mag_->setVisible(checked);
             P->curve_hi_phase_->setVisible(checked);
         });
+
+    P->ui.sp_parallel->setRange(1, Analysis::max_bins_at_once);
+    connect(
+        P->ui.sp_parallel, QOverload<int>::of(&QSpinBox::valueChanged),
+        this, [](int num) { theApplication->setFreqsAtOnce(num); });
 }
 
 MainWindow::~MainWindow()

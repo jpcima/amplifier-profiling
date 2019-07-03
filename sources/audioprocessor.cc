@@ -24,7 +24,7 @@ struct Audio_Processor::Impl {
     void process_message(const Basic_Message &hmsg);
     void generate(float *out, unsigned n);
     void collect(const float *in, unsigned n);
-    cfloat compute_response();
+    void compute_response(cfloat *response);
     void update_levels(const float *in, float *out, unsigned n);
 
 /*
@@ -47,9 +47,11 @@ struct Audio_Processor::Impl {
     bool gen_can_start_ = false;
     bool gen_has_finished_ = false;
     int gen_spl_ = Analysis::Signal_Lo;
-    float gen_freq_ = 0;
-    float gen_phase_ = 0;
-    float gen_starting_phase_ = 0;
+
+    unsigned gen_num_bins_ = 0;
+    float gen_freq_[Analysis::max_bins_at_once] = {};
+    float gen_phase_[Analysis::max_bins_at_once] = {};
+    float gen_starting_phase_[Analysis::max_bins_at_once] = {};
 
     std::unique_ptr<float[]> out_buf_;
     unsigned out_buf_len_ = 0;
@@ -159,9 +161,11 @@ void Audio_Processor::Impl::process(const float *in, float *out, unsigned n, voi
                 Ring_Buffer &rb_out = *P->rb_out_;
                 Messages::NotifyFrequencyAnalysis msg;
                 if (sizeof(msg) < rb_out.size_free()) {
-                    msg.frequency = P->gen_freq_ * Analysis::sample_rate;
                     msg.spl = P->gen_spl_;
-                    msg.response = P->compute_response();
+                    msg.num_bins = P->gen_num_bins_;
+                    P->compute_response(msg.response);
+                    for (unsigned a = 0; a < msg.num_bins; ++a)
+                        msg.frequency[a] = P->gen_freq_[a] * Analysis::sample_rate;
                     rb_out.put(msg);
                     P->gen_has_finished_ = true;
                 }
@@ -170,7 +174,8 @@ void Audio_Processor::Impl::process(const float *in, float *out, unsigned n, voi
 
         if (!P->gen_can_start_ && P->out_amp_ < Analysis::silence_threshold) {
             P->gen_can_start_ = true;
-            P->gen_starting_phase_ = P->gen_phase_;
+            for (unsigned a = 0, num_bins = P->gen_num_bins_; a < num_bins; ++a)
+                P->gen_starting_phase_[a] = P->gen_phase_[a];
         }
 
         if (P->gen_can_start_)
@@ -205,11 +210,14 @@ void Audio_Processor::Impl::process_message(const Basic_Message &hmsg)
         gen_can_start_ = false;
         gen_has_finished_ = false;
         gen_spl_ = msg->spl;
-        unsigned bin = std::lround(fft_size * msg->frequency / sr);
-        bin = std::min(bin, fft_size / 2);
-        gen_freq_ = (float)bin / fft_size;
-        gen_phase_ = 0;
-        gen_starting_phase_ = 0;
+        unsigned num_bins = gen_num_bins_ = msg->num_bins;
+        for (unsigned a = 0; a < num_bins; ++a) {
+            unsigned bin = std::lround(fft_size * msg->frequency[a] / sr);
+            bin = std::min(bin, fft_size / 2);
+            gen_freq_[a] = (float)bin / fft_size;
+            gen_phase_[a] = 0;
+            gen_starting_phase_[a] = 0;
+        }
         out_buf_fill_ = 0;
         break;
     }
@@ -224,15 +232,22 @@ void Audio_Processor::Impl::process_message(const Basic_Message &hmsg)
 
 void Audio_Processor::Impl::generate(float *out, unsigned n)
 {
-    const float f = gen_freq_;
-    const float a = Analysis::global_amplitude(gen_spl_);
-    float p = gen_phase_;
-    for (unsigned i = 0; i < n; ++i) {
-        out[i] = a * std::cos(2 * (float)M_PI * p);
-        p += f;
-        p -= (int)p;
+    const float amp = Analysis::global_amplitude(gen_spl_);
+
+    for (unsigned i = 0; i < n; ++i)
+        out[i] = 0;
+
+    unsigned num_bins = gen_num_bins_;
+    for (unsigned a = 0; a < num_bins; ++a) {
+        const float f = gen_freq_[a];
+        float p = gen_phase_[a];
+        for (unsigned i = 0; i < n; ++i) {
+            out[i] += amp * std::cos(2 * (float)M_PI * p);
+            p += f;
+            p -= (int)p;
+        }
+        gen_phase_[a] = p;
     }
-    gen_phase_ = p;
 }
 
 void Audio_Processor::Impl::collect(const float *in, unsigned n)
@@ -248,9 +263,8 @@ void Audio_Processor::Impl::collect(const float *in, unsigned n)
     out_buf_fill_ = fill;
 }
 
-cfloat Audio_Processor::Impl::compute_response()
+void Audio_Processor::Impl::compute_response(cfloat *response)
 {
-    const float f = gen_freq_;
     const unsigned n = out_buf_len_;
 
     const float *raw = out_buf_.get();
@@ -264,13 +278,16 @@ cfloat Audio_Processor::Impl::compute_response()
 
     fftwf_execute(fft_plan_.get());
 
-    unsigned bin = std::lround(n * f);
-    cfloat h_out = cplx[bin] * 4.0f / (float)n;
-    cfloat h_in = std::polar(
-        (float)Analysis::global_amplitude(gen_spl_),
-        2 * (float)M_PI * gen_starting_phase_);
-    cfloat response = h_out / h_in;
-    return response;
+    unsigned num_bins = gen_num_bins_;
+    for (unsigned a = 0; a < num_bins; ++a) {
+        const float f = gen_freq_[a];
+        unsigned bin = std::lround(n * f);
+        cfloat h_out = cplx[bin] * 4.0f / (float)n;
+        cfloat h_in = std::polar(
+            (float)Analysis::global_amplitude(gen_spl_),
+            2 * (float)M_PI * gen_starting_phase_[a]);
+        response[a] = h_out / h_in;
+    }
 }
 
 void Audio_Processor::Impl::update_levels(const float *in, float *out, unsigned n)
