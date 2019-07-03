@@ -8,6 +8,7 @@
 #include "audioprocessor.h"
 #include "analyzerdefs.h"
 #include "messages.h"
+#include "utility/counting_bitset.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QTimer>
@@ -38,7 +39,7 @@ struct Application::Impl {
     unsigned sweep_index_ = 0;
     int sweep_spl_ = Analysis::Signal_Lo;
     unsigned freqs_at_once_ = 1;
-    unsigned sweep_progress_ = 0;
+    counting_bitset<Analysis::sweep_length> sweep_progress_;
 
     bool lo_enable_ = true;
     bool hi_enable_ = true;
@@ -103,7 +104,7 @@ void Application::setSweepEnabled(bool lo, bool hi)
     P->lo_enable_ = lo;
     P->hi_enable_ = hi;
 
-    P->sweep_progress_ = 0;
+    P->sweep_progress_.reset();
     P->mainwindow_->showProgress(0);
 
     if (disabled) {
@@ -133,7 +134,7 @@ void Application::setSweepActive(bool active)
         P->proc_->send_message(msg);
     }
     else {
-        P->sweep_progress_ = 0;
+        P->sweep_progress_.reset();
         P->mainwindow_->showProgress(0);
         P->tm_nextsweep_->start(0);
     }
@@ -215,20 +216,18 @@ void Application::realtimeUpdateTick()
                 plot_mags[dst_index] = 20 * std::log10(std::abs(msg->response[a]));
                 plot_phases[dst_index] = std::arg(msg->response[a]);
 
+                P->sweep_progress_.set(dst_index);
             }
 
             ++index;
-            if (index == Analysis::sweep_length || !P->enabled_spl(spl)) {
+            if (P->sweep_progress_.count() == Analysis::sweep_length || !P->enabled_spl(spl)) {
                 index = 0;
                 spl = P->next_spl_phase(P->sweep_spl_);
             }
             P->sweep_index_ = index;
             P->set_sweep_phase(spl);
 
-            unsigned progress = P->sweep_progress_;
-            progress += done_bins;
-            P->sweep_progress_ = std::min(progress, 2u * Analysis::sweep_length);
-            P->mainwindow_->showProgress(progress * (0.5f / Analysis::sweep_length));
+            P->mainwindow_->showProgress(P->sweep_progress_.count() * (1.0 / Analysis::sweep_length));
 
             replotResponses();
 
@@ -302,5 +301,6 @@ void Application::Impl::set_sweep_phase(int spl)
     if (sweep_spl_ == spl)
         return;
     sweep_spl_ = spl;
+    sweep_progress_.reset();
     emit theApplication->sweepPhaseChanged(spl);
 }
