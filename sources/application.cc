@@ -219,11 +219,9 @@ void Application::realtimeUpdateTick()
                 P->sweep_progress_.set(dst_index);
             }
 
-            ++index;
-            if (P->sweep_progress_.count() == Analysis::sweep_length || !P->enabled_spl(spl)) {
-                index = 0;
+            index = (index + 1) % Analysis::sweep_length;
+            if (P->sweep_progress_.count() == Analysis::sweep_length || !P->enabled_spl(spl))
                 spl = P->next_spl_phase(P->sweep_spl_);
-            }
             P->sweep_index_ = index;
             P->set_sweep_phase(spl);
 
