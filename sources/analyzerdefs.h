@@ -21,6 +21,10 @@ enum {
     sweep_length = 128,
 };
 
+enum {
+    max_bins_at_once = 32,
+};
+
 enum Signal_Pseudo_Level {
     Signal_Lo,
     Signal_Hi,
@@ -39,6 +43,11 @@ inline constexpr double spl_amplitude(int spl)
 inline double global_amplitude(int spl)
 {
     return spl_amplitude(spl) * global_gain;
+}
+
+inline unsigned nth_bin_position(unsigned sweep_index, unsigned nth_bin, unsigned count_at_once)
+{
+    return (sweep_index + nth_bin * Analysis::sweep_length / count_at_once) % Analysis::sweep_length;
 }
 
 }  // namespace Analysis

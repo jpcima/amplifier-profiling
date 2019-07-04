@@ -4,6 +4,7 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 
 #pragma once
+#include "analyzerdefs.h"
 #include <complex>
 #include <cstddef>
 #include <cstdint>
@@ -38,17 +39,19 @@ namespace Messages {
         struct t : public Basic_Message_T<Message_Tag::t>
 
     DEFMESSAGE(RequestAnalyzeFrequency) {
-        float frequency;
         int spl;
+        unsigned num_bins;
+        float frequency[Analysis::max_bins_at_once];
     };
 
     DEFMESSAGE(RequestStop) {
     };
 
     DEFMESSAGE(NotifyFrequencyAnalysis) {
-        float frequency;
         int spl;
-        std::complex<float> response;
+        unsigned num_bins;
+        float frequency[Analysis::max_bins_at_once];
+        std::complex<float> response[Analysis::max_bins_at_once];
     };
 
     #undef DEFMESSAGE
