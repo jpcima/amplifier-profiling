@@ -12,6 +12,7 @@
 #include <qwt_plot_marker.h>
 #include <qwt_plot_grid.h>
 #include <qwt_plot_legenditem.h>
+#include <qwt_plot_picker.h>
 #include <qwt_symbol.h>
 #include <cmath>
 
@@ -52,6 +53,47 @@ MainWindow::MainWindow(QWidget *parent)
     QwtSymbol *sym_lo_phase = new QwtSymbol(QwtSymbol::Ellipse, QBrush(Qt::transparent), QPen(color_lo), QSize(6, 6));
     curve_lo_phase->setSymbol(sym_lo_phase);
     curve_lo_phase->attach(P->ui.pltPhase);
+
+    ///
+    class AmpPicker : public QwtPlotPicker {
+    public:
+        using QwtPlotPicker::QwtPlotPicker;
+
+        QwtText trackerText(const QPoint &pos) const override
+        {
+            QPointF xy = invTransform(pos);
+            QwtText text(QString("%0 Hz\n%1 dB")
+                         .arg(xy.x(), 0, 'f', 2)
+                         .arg(xy.y(), 0, 'f', 2));
+            QColor bg(Qt::yellow);
+            bg.setAlpha(160);
+            text.setBackgroundBrush(bg);
+            return text;
+        }
+    };
+
+    class PhasePicker : public QwtPlotPicker {
+    public:
+        using QwtPlotPicker::QwtPlotPicker;
+
+        QwtText trackerText(const QPoint &pos) const override
+        {
+            QPointF xy = invTransform(pos);
+            QwtText text(QString::fromUtf8(u8"%0 Hz\n%1 π")
+                         .arg(xy.x(), 0, 'f', 2)
+                         .arg(xy.y() * (1.0 / M_PI), 0, 'f', 2));
+            QColor bg(Qt::yellow);
+            bg.setAlpha(160);
+            text.setBackgroundBrush(bg);
+            return text;
+        }
+    };
+
+    AmpPicker *amp_picker = new AmpPicker(QwtPlot::xBottom, QwtPlot::yLeft, QwtPicker::CrossRubberBand, QwtPicker::AlwaysOn, P->ui.pltAmplitude->canvas());
+    PhasePicker *phase_picker = new PhasePicker(QwtPlot::xBottom, QwtPlot::yLeft, QwtPicker::CrossRubberBand, QwtPicker::AlwaysOn, P->ui.pltPhase->canvas());
+    Q_UNUSED(amp_picker);
+    Q_UNUSED(phase_picker);
+    ///
 
     QwtPlotCurve *curve_hi_mag = P->curve_hi_mag_ = new QwtPlotCurve(tr("Hi Signal Gain"));
     curve_hi_mag->attach(P->ui.pltAmplitude);
