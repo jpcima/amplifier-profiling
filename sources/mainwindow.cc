@@ -12,6 +12,7 @@
 #include <qwt_plot_marker.h>
 #include <qwt_plot_grid.h>
 #include <qwt_plot_legenditem.h>
+#include <qwt_symbol.h>
 #include <cmath>
 
 struct MainWindow::Impl {
@@ -40,19 +41,26 @@ MainWindow::MainWindow(QWidget *parent)
         grid->attach(plt);
     }
 
+    QColor color_lo(Qt::green);
+    QColor color_hi(Qt::red);
+
     QwtPlotCurve *curve_lo_mag = P->curve_lo_mag_ = new QwtPlotCurve(tr("Lo Signal Gain"));
     curve_lo_mag->attach(P->ui.pltAmplitude);
-    curve_lo_mag->setPen(Qt::green, 0.0, Qt::SolidLine);
+    curve_lo_mag->setPen(color_lo, 0.0, Qt::SolidLine);
     QwtPlotCurve *curve_lo_phase = P->curve_lo_phase_ = new QwtPlotCurve(tr("Lo Signal Phase"));
+    curve_lo_phase->setStyle(QwtPlotCurve::NoCurve);
+    QwtSymbol *sym_lo_phase = new QwtSymbol(QwtSymbol::Ellipse, QBrush(Qt::transparent), QPen(color_lo), QSize(6, 6));
+    curve_lo_phase->setSymbol(sym_lo_phase);
     curve_lo_phase->attach(P->ui.pltPhase);
-    curve_lo_phase->setPen(Qt::green, 0.0, Qt::SolidLine);
 
     QwtPlotCurve *curve_hi_mag = P->curve_hi_mag_ = new QwtPlotCurve(tr("Hi Signal Gain"));
     curve_hi_mag->attach(P->ui.pltAmplitude);
-    curve_hi_mag->setPen(Qt::red, 0.0, Qt::SolidLine);
+    curve_hi_mag->setPen(color_hi, 0.0, Qt::SolidLine);
     QwtPlotCurve *curve_hi_phase = P->curve_hi_phase_ = new QwtPlotCurve(tr("Hi Signal Phase"));
+    curve_hi_phase->setStyle(QwtPlotCurve::NoCurve);
+    QwtSymbol *sym_hi_phase = new QwtSymbol(QwtSymbol::Triangle, QBrush(Qt::transparent), QPen(color_hi), QSize(6, 6));
+    curve_hi_phase->setSymbol(sym_hi_phase);
     curve_hi_phase->attach(P->ui.pltPhase);
-    curve_hi_phase->setPen(Qt::red, 0.0, Qt::SolidLine);
 
     QwtPlotMarker *marker_mag = P->marker_mag_ = new QwtPlotMarker;
     marker_mag->attach(P->ui.pltAmplitude);
